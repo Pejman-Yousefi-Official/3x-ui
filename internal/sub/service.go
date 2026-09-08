@@ -2041,14 +2041,8 @@ func appendQueryAndFragment(link string, params map[string]string, fragment, sec
 
 	if fragment != "" {
 		sb.WriteByte('#')
-		if before, after, ok := strings.Cut(fragment, "?"); ok {
-			sb.WriteString(strings.ReplaceAll(url.QueryEscape(before), "+", "%20"))
-			sb.WriteByte('?')
-			sb.WriteString(after)
-		} else {
-			// Match the frontend's encodeURIComponent(remark): spaces become %20.
-			sb.WriteString(strings.ReplaceAll(url.QueryEscape(fragment), "+", "%20"))
-		}
+		// Match the frontend's encodeURIComponent(remark): spaces become %20.
+		sb.WriteString(strings.ReplaceAll(url.QueryEscape(fragment), "+", "%20"))
 	}
 	return sb.String()
 }

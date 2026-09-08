@@ -1,10 +1,8 @@
 package sub
 
 import (
-	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +26,7 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 		ProviderId:          "pid-test-123",
 		NewUrl:              "https://new.example.com/sub",
 		FallbackUrl:         "https://backup.example.com/sub",
-		SubInfoColor:        "green",
+		SubInfoColor:        "primary",
 		SubInfoText:         "Welcome to VIP Network",
 		SubInfoButtonText:   "Telegram",
 		SubInfoButtonLink:   "https://t.me/example",
@@ -41,11 +39,11 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 		TunType:             "singbox",
 		ExcludeRoutes:       "192.168.1.0/24, 10.0.0.0/8",
 		ExcludeApns:         true,
-		ColorProfile:        `{"serverRowBackgroundColor":"#21003D67"}`,
-		PingType:            "proxy",
+		ColorProfile:        "{\"serverRowBackgroundColor\":\n\"#21003D67\"}",
+		PingType:            "http",
 		AutoConnect:         true,
-		AutoConnectType:     "lowestdelay",
-		PerAppMode:          "on",
+		AutoConnectType:     "fastest",
+		PerAppMode:          "include",
 		PerAppList:          "com.google.chrome,com.meta.instagram",
 	}
 
@@ -73,8 +71,8 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 	if h.Get("Fallback-Url") != "https://backup.example.com/sub" {
 		t.Fatalf("Fallback-Url = %q", h.Get("Fallback-Url"))
 	}
-	if h.Get("Sub-Info-Color") != "green" || h.Get("Sub-Info-Text") != "Welcome to VIP Network" {
-		t.Fatalf("Sub-Info = %s / %s", h.Get("Sub-Info-Color"), h.Get("Sub-Info-Text"))
+	if h.Get("Sub-Info-Color") != "blue" || h.Get("Sub-Info-Text") != "Welcome to VIP Network" {
+		t.Fatalf("Sub-Info = %s / %s, want blue / Welcome to VIP Network", h.Get("Sub-Info-Color"), h.Get("Sub-Info-Text"))
 	}
 	if h.Get("Sub-Info-Button-Text") != "Telegram" || h.Get("Sub-Info-Button-Link") != "https://t.me/example" {
 		t.Fatalf("Sub-Info button = %s / %s", h.Get("Sub-Info-Button-Text"), h.Get("Sub-Info-Button-Link"))
@@ -97,58 +95,125 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 	if h.Get("Exclude-Routes") != "192.168.1.0/24, 10.0.0.0/8" || h.Get("Exclude-Apns-Enable") != "true" {
 		t.Fatalf("Exclude routes/apns = %s / %s", h.Get("Exclude-Routes"), h.Get("Exclude-Apns-Enable"))
 	}
-	if h.Get("Color-Profile") != cfg.ColorProfile {
-		t.Fatalf("Color-Profile = %q", h.Get("Color-Profile"))
+	if wantProfile := "{\"serverRowBackgroundColor\":\"#21003D67\"}"; h.Get("Color-Profile") != wantProfile {
+		t.Fatalf("Color-Profile = %q, want %q", h.Get("Color-Profile"), wantProfile)
 	}
 	if h.Get("Ping-Type") != "proxy" {
-		t.Fatalf("Ping-Type = %q", h.Get("Ping-Type"))
+		t.Fatalf("Ping-Type = %q, want proxy for http alias", h.Get("Ping-Type"))
 	}
 	if h.Get("Subscription-Autoconnect") != "1" || h.Get("Subscription-Autoconnect-Type") != "lowestdelay" {
-		t.Fatalf("Autoconnect = %s / %s", h.Get("Subscription-Autoconnect"), h.Get("Subscription-Autoconnect-Type"))
+		t.Fatalf("Autoconnect = %s / %s, want 1 / lowestdelay for fastest alias", h.Get("Subscription-Autoconnect"), h.Get("Subscription-Autoconnect-Type"))
 	}
 	if h.Get("Per-App-Proxy-Mode") != "on" || h.Get("Per-App-Proxy-List") != "com.google.chrome,com.meta.instagram" {
-		t.Fatalf("Per-App = %s / %s", h.Get("Per-App-Proxy-Mode"), h.Get("Per-App-Proxy-List"))
+		t.Fatalf("Per-App = %s / %s, want on / com.google.chrome,com.meta.instagram", h.Get("Per-App-Proxy-Mode"), h.Get("Per-App-Proxy-List"))
 	}
 }
 
-func TestBuildHappPresetRouting(t *testing.T) {
-	presets := []string{"iran-bypass", "china-direct", "adblock", "global"}
-	for _, preset := range presets {
-		link, err := BuildHappPresetRouting(preset)
-		if err != nil {
-			t.Fatalf("BuildHappPresetRouting(%s) error: %v", preset, err)
-		}
-		if !strings.HasPrefix(link, "happ://routing/onadd/") {
-			t.Fatalf("BuildHappPresetRouting(%s) = %q, missing prefix", preset, link)
-		}
-		b64 := strings.TrimPrefix(link, "happ://routing/onadd/")
-		decoded, err := base64.StdEncoding.DecodeString(b64)
-		if err != nil {
-			t.Fatalf("failed to decode base64 for %s: %v", preset, err)
-		}
-		if !strings.Contains(string(decoded), `"GlobalProxy":"true"`) {
-			t.Fatalf("decoded preset %s missing GlobalProxy: %s", preset, string(decoded))
-		}
+func TestApplyHappHeaders_Gating(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := HappConfig{
+		AutoDetect:  true,
+		ProviderId:  "pid-secret",
+		SubInfoText: "Banner",
+		TunMode:     "system",
 	}
 
-	if _, err := BuildHappPresetRouting("invalid-preset"); err == nil {
-		t.Fatalf("expected error on invalid preset")
-	}
+	t.Run("non-Happ User-Agent receives no headers", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(http.MethodGet, "/sub/test", nil)
+		ctx.Request.Header.Set("User-Agent", "v2rayNG/1.8.5")
+
+		controller := &SUBController{happConfig: cfg}
+		controller.ApplyCommonHeaders(ctx, "", "", "Title", "", "", "", false, "", false)
+
+		if got := recorder.Header().Get("ProviderID"); got != "" {
+			t.Fatalf("ProviderID emitted to non-Happ client: %q", got)
+		}
+		if got := recorder.Header().Get("Sub-Info-Text"); got != "" {
+			t.Fatalf("Sub-Info-Text emitted to non-Happ client: %q", got)
+		}
+		if got := recorder.Header().Get("Tun-Mode"); got != "" {
+			t.Fatalf("Tun-Mode emitted to non-Happ client: %q", got)
+		}
+	})
+
+	t.Run("AutoDetect disabled suppresses Happ headers", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(http.MethodGet, "/sub/test", nil)
+		ctx.Request.Header.Set("User-Agent", "Happ/1.2.0 (Android)")
+
+		disabledCfg := cfg
+		disabledCfg.AutoDetect = false
+
+		controller := &SUBController{happConfig: disabledCfg}
+		controller.ApplyCommonHeaders(ctx, "", "", "Title", "", "", "", false, "", false)
+
+		if got := recorder.Header().Get("ProviderID"); got != "" {
+			t.Fatalf("ProviderID emitted when AutoDetect is false: %q", got)
+		}
+		if got := recorder.Header().Get("Sub-Info-Text"); got != "" {
+			t.Fatalf("Sub-Info-Text emitted when AutoDetect is false: %q", got)
+		}
+	})
 }
 
-func TestAppendHappServerDescription(t *testing.T) {
-	got := appendHappServerDescription("My Node", "VIP Server")
-	wantSuffix := "?serverDescription=" + base64.StdEncoding.EncodeToString([]byte("VIP Server"))
-	if !strings.HasSuffix(got, wantSuffix) {
-		t.Fatalf("appendHappServerDescription = %q, want suffix %q", got, wantSuffix)
+func TestApplyHappHeaders_Aliases(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name       string
+		cfg        HappConfig
+		wantHeader string
+		wantValue  string
+	}{
+		{
+			name:       "color warning maps to red",
+			cfg:        HappConfig{AutoDetect: true, SubInfoText: "Alert", SubInfoColor: "warning"},
+			wantHeader: "Sub-Info-Color",
+			wantValue:  "red",
+		},
+		{
+			name:       "color danger maps to red",
+			cfg:        HappConfig{AutoDetect: true, SubInfoText: "Alert", SubInfoColor: "danger"},
+			wantHeader: "Sub-Info-Color",
+			wantValue:  "red",
+		},
+		{
+			name:       "color success maps to green",
+			cfg:        HappConfig{AutoDetect: true, SubInfoText: "Ok", SubInfoColor: "success"},
+			wantHeader: "Sub-Info-Color",
+			wantValue:  "green",
+		},
+		{
+			name:       "autoconnect last maps to lastused",
+			cfg:        HappConfig{AutoDetect: true, AutoConnect: true, AutoConnectType: "last"},
+			wantHeader: "Subscription-Autoconnect-Type",
+			wantValue:  "lastused",
+		},
+		{
+			name:       "per-app exclude maps to bypass",
+			cfg:        HappConfig{AutoDetect: true, PerAppMode: "exclude", PerAppList: "app.id"},
+			wantHeader: "Per-App-Proxy-Mode",
+			wantValue:  "bypass",
+		},
 	}
 
-	gotExisting := appendHappServerDescription("My Node?foo=bar", "VIP Server")
-	if !strings.Contains(gotExisting, "&serverDescription=") {
-		t.Fatalf("appendHappServerDescription with existing query = %q", gotExisting)
-	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Request = httptest.NewRequest(http.MethodGet, "/sub/test", nil)
+			ctx.Request.Header.Set("User-Agent", "Happ/1.2.0 (iOS)")
 
-	if gotEmpty := appendHappServerDescription("My Node", ""); gotEmpty != "My Node" {
-		t.Fatalf("appendHappServerDescription with empty desc = %q", gotEmpty)
+			controller := &SUBController{happConfig: tc.cfg}
+			controller.ApplyCommonHeaders(ctx, "", "", "Title", "", "", "", false, "", false)
+
+			if got := recorder.Header().Get(tc.wantHeader); got != tc.wantValue {
+				t.Fatalf("%s = %q, want %q", tc.wantHeader, got, tc.wantValue)
+			}
+		})
 	}
 }

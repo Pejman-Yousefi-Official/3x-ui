@@ -142,7 +142,7 @@ export default function HappSettingsContent({
                         { value: 'china-direct', label: t('pages.settings.subHappPresetChina') },
                         { value: 'adblock', label: t('pages.settings.subHappPresetAdblock') },
                         { value: 'global', label: t('pages.settings.subHappPresetGlobal') },
-                        { value: 'off', label: 'Disable Routing (happ://routing/off)' },
+                        { value: 'off', label: t('pages.settings.subHappPresetOff') },
                       ]}
                     />
                     <Button type="primary" onClick={applyPreset}>
@@ -231,9 +231,9 @@ export default function HappSettingsContent({
                     style={{ width: '100%' }}
                     onChange={(v) => updateSetting({ subHappSubInfoColor: v })}
                     options={[
-                      { value: 'blue', label: 'Blue (Standard / Default)' },
-                      { value: 'green', label: 'Green (Success)' },
-                      { value: 'red', label: 'Red (Warning / Danger)' },
+                      { value: 'blue', label: t('pages.settings.subHappColorBlue') },
+                      { value: 'green', label: t('pages.settings.subHappColorGreen') },
+                      { value: 'red', label: t('pages.settings.subHappColorRed') },
                     ]}
                   />
                 </SettingListItem>
@@ -318,9 +318,9 @@ export default function HappSettingsContent({
                     style={{ width: '100%' }}
                     onChange={(v) => updateSetting({ subHappTunMode: v })}
                     options={[
-                      { value: 'default', label: 'Default' },
-                      { value: 'system', label: 'System (Standard OS Stack)' },
-                      { value: 'gvisor', label: 'gVisor (Userspace Stack)' },
+                      { value: 'default', label: t('pages.settings.subHappTunModeDefault') },
+                      { value: 'system', label: t('pages.settings.subHappTunModeSystem') },
+                      { value: 'gvisor', label: t('pages.settings.subHappTunModeGvisor') },
                     ]}
                   />
                 </SettingListItem>
@@ -335,10 +335,10 @@ export default function HappSettingsContent({
                     style={{ width: '100%' }}
                     onChange={(v) => updateSetting({ subHappTunType: v })}
                     options={[
-                      { value: 'singbox', label: 'sing-box' },
-                      { value: 'tun2proxy', label: 'tun2proxy' },
-                      { value: 'default', label: 'Default (Happ TUN)' },
-                      { value: 'xray', label: 'Xray TUN' },
+                      { value: 'singbox', label: t('pages.settings.subHappTunTypeSingbox') },
+                      { value: 'tun2proxy', label: t('pages.settings.subHappTunTypeTun2proxy') },
+                      { value: 'default', label: t('pages.settings.subHappTunTypeDefault') },
+                      { value: 'xray', label: t('pages.settings.subHappTunTypeXray') },
                     ]}
                   />
                 </SettingListItem>
@@ -376,10 +376,10 @@ export default function HappSettingsContent({
                     style={{ width: '100%' }}
                     onChange={(v) => updateSetting({ subHappPingType: v })}
                     options={[
-                      { value: 'proxy', label: 'via Proxy (GET Latency)' },
-                      { value: 'proxy-head', label: 'via Proxy (HEAD Latency)' },
-                      { value: 'tcp', label: 'TCP Handshake Ping' },
-                      { value: 'icmp', label: 'ICMP Ping' },
+                      { value: 'proxy', label: t('pages.settings.subHappPingProxy') },
+                      { value: 'proxy-head', label: t('pages.settings.subHappPingProxyHead') },
+                      { value: 'tcp', label: t('pages.settings.subHappPingTcp') },
+                      { value: 'icmp', label: t('pages.settings.subHappPingIcmp') },
                     ]}
                   />
                 </SettingListItem>
@@ -405,9 +405,12 @@ export default function HappSettingsContent({
                     style={{ width: '100%' }}
                     onChange={(v) => updateSetting({ subHappAutoConnectType: v })}
                     options={[
-                      { value: 'lowestdelay', label: 'Lowest Delay (Fastest Node)' },
-                      { value: 'lastused', label: 'Last Used Node' },
-                      { value: 'random', label: 'Random Node' },
+                      {
+                        value: 'lowestdelay',
+                        label: t('pages.settings.subHappAutoConnectLowestDelay'),
+                      },
+                      { value: 'lastused', label: t('pages.settings.subHappAutoConnectLastUsed') },
+                      { value: 'random', label: t('pages.settings.subHappAutoConnectRandom') },
                     ]}
                   />
                 </SettingListItem>
@@ -525,9 +528,9 @@ export default function HappSettingsContent({
                     style={{ width: '100%' }}
                     onChange={(v) => updateSetting({ subHappPerAppMode: v })}
                     options={[
-                      { value: 'off', label: 'Off' },
-                      { value: 'on', label: 'On (Proxy Only Listed Apps)' },
-                      { value: 'bypass', label: 'Bypass (Exclude Listed Apps)' },
+                      { value: 'off', label: t('pages.settings.subHappPerAppOff') },
+                      { value: 'on', label: t('pages.settings.subHappPerAppOn') },
+                      { value: 'bypass', label: t('pages.settings.subHappPerAppBypass') },
                     ]}
                   />
                 </SettingListItem>

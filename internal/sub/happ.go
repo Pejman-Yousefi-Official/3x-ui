@@ -1,9 +1,6 @@
 package sub
 
 import (
-	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"regexp"
 	"strings"
 
@@ -46,6 +43,9 @@ func IsHappClient(userAgent string) bool {
 
 // ApplyHappHeaders sets standard and advanced Happ subscription headers.
 func ApplyHappHeaders(c *gin.Context, cfg HappConfig, isHapp bool) {
+	if !cfg.AutoDetect || !isHapp {
+		return
+	}
 	if cfg.ProviderId != "" {
 		c.Writer.Header().Set("ProviderID", cfg.ProviderId)
 	}
@@ -104,6 +104,7 @@ func ApplyHappHeaders(c *gin.Context, cfg HappConfig, isHapp bool) {
 		c.Writer.Header().Set("Exclude-Apns-Enable", "true")
 	}
 	if profile := strings.TrimSpace(cfg.ColorProfile); profile != "" {
+		profile = strings.ReplaceAll(strings.ReplaceAll(profile, "\r", ""), "\n", "")
 		c.Writer.Header().Set("Color-Profile", profile)
 	}
 	if ping := strings.TrimSpace(cfg.PingType); ping != "" {
@@ -137,64 +138,4 @@ func ApplyHappHeaders(c *gin.Context, cfg HappConfig, isHapp bool) {
 			c.Writer.Header().Set("Per-App-Proxy-List", list)
 		}
 	}
-}
-
-// BuildHappPresetRouting creates a ready-to-use happ:// routing deeplink.
-func BuildHappPresetRouting(preset string) (string, error) {
-	directIPs := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"169.254.0.0/16",
-		"224.0.0.0/4",
-		"255.255.255.255",
-	}
-	profile := map[string]any{
-		"GlobalProxy":      "true",
-		"RemoteDNSType":    "DoH",
-		"RemoteDNSDomain":  "https://cloudflare-dns.com/dns-query",
-		"RemoteDNSIP":      "1.1.1.1",
-		"DomesticDNSType":  "DoH",
-		"DomesticDNSDomain": "https://dns.google/dns-query",
-		"DomesticDNSIP":    "8.8.8.8",
-		"Geoipurl":         "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geoip.dat",
-		"Geositeurl":       "https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat",
-		"DnsHosts": map[string]string{
-			"cloudflare-dns.com": "1.1.1.1",
-			"dns.google":         "8.8.8.8",
-		},
-		"DirectSites":    []string{},
-		"DirectIp":       directIPs,
-		"ProxySites":     []string{},
-		"ProxyIp":        []string{},
-		"BlockSites":     []string{"geosite:ads"},
-		"BlockIp":        []string{"geoip:ads"},
-		"DomainStrategy": "IPIfNonMatch",
-		"FakeDNS":        "false",
-	}
-
-	switch preset {
-	case "iran-bypass":
-		profile["Name"] = "Iran Bypass"
-		profile["DirectSites"] = []string{"geosite:ir"}
-		profile["DirectIp"] = append([]string{"geoip:ir"}, directIPs...)
-	case "china-direct":
-		profile["Name"] = "China Direct"
-		profile["DirectSites"] = []string{"geosite:cn", "geosite:geolocation-cn"}
-		profile["DirectIp"] = append([]string{"geoip:cn"}, directIPs...)
-	case "adblock":
-		profile["Name"] = "AdBlock"
-	case "global":
-		profile["Name"] = "Global"
-		profile["BlockSites"] = []string{}
-		profile["BlockIp"] = []string{}
-	default:
-		return "", errors.New("unknown Happ routing preset: " + preset)
-	}
-
-	compact, err := json.Marshal(profile)
-	if err != nil {
-		return "", err
-	}
-	return "happ://routing/onadd/" + base64.StdEncoding.EncodeToString(compact), nil
 }
