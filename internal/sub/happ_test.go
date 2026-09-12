@@ -113,6 +113,28 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 	}
 }
 
+func TestApplyCommonHeaders_HappRoutingOffDeeplink(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := HappConfig{AutoDetect: true}
+	controller := &SUBController{happConfig: cfg}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/sub/test", nil)
+	ctx.Request.Header.Set("User-Agent", "Happ/1.2.0 (iPhone)")
+
+	// Even if profileEnableRouting is true, happ://routing/off must emit Routing-Enable: 0 and Routing: happ://routing/off
+	controller.ApplyCommonHeaders(ctx, "", "", "Title", "", "", "", true, "happ://routing/off", false)
+
+	h := recorder.Header()
+	if h.Get("Routing-Enable") != "0" {
+		t.Fatalf("Routing-Enable = %q, want 0 when rules is happ://routing/off", h.Get("Routing-Enable"))
+	}
+	if h.Get("Routing") != "happ://routing/off" {
+		t.Fatalf("Routing = %q, want happ://routing/off", h.Get("Routing"))
+	}
+}
+
 func TestApplyHappHeaders_Gating(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

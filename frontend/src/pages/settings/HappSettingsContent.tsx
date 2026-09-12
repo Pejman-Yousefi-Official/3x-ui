@@ -67,6 +67,17 @@ export default function HappSettingsContent({
 
   return (
     <>
+      <SettingListItem
+        paddings="small"
+        title={t('pages.settings.subHappAutoDetect')}
+        description={t('pages.settings.subHappAutoDetectDesc')}
+      >
+        <Switch
+          checked={allSetting.subHappAutoDetect}
+          onChange={(v) => updateSetting({ subHappAutoDetect: v })}
+        />
+      </SettingListItem>
+
       <Tabs
         type="card"
         size="small"
@@ -110,7 +121,7 @@ export default function HappSettingsContent({
                       ]}
                     />
                     <Button type="primary" onClick={applyPreset}>
-                      {t('pages.settings.subHappPresets')}
+                      {t('apply')}
                     </Button>
                   </Space>
                 </SettingListItem>
@@ -397,11 +408,43 @@ export default function HappSettingsContent({
                   title={t('pages.settings.subHappColorProfile')}
                   description={t('pages.settings.subHappColorProfileDesc')}
                 >
-                  <Input
-                    value={allSetting.subHappColorProfile}
-                    placeholder='{"backgroundColors":["#3D2A7DFF",...]} or resetcolors'
-                    onChange={(e) => updateSetting({ subHappColorProfile: e.target.value })}
-                  />
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Input
+                      value={allSetting.subHappColorProfile}
+                      placeholder='{"serverRowBackgroundColor":"#21003D67"} or resetcolors'
+                      onChange={(e) => updateSetting({ subHappColorProfile: e.target.value })}
+                    />
+                    <Space wrap size="small">
+                      <Button
+                        size="small"
+                        onClick={() => updateSetting({ subHappColorProfile: 'resetcolors' })}
+                      >
+                        {t('reset')}
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          updateSetting({
+                            subHappColorProfile:
+                              '{"serverRowBackgroundColor":"#21003D67","cardBackgroundColor":"#120023B3"}',
+                          })
+                        }
+                      >
+                        Violet
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() =>
+                          updateSetting({
+                            subHappColorProfile:
+                              '{"serverRowBackgroundColor":"#002B3667","cardBackgroundColor":"#001F27B3"}',
+                          })
+                        }
+                      >
+                        Turquoise
+                      </Button>
+                    </Space>
+                  </Space>
                 </SettingListItem>
               </>
             ),
@@ -415,17 +458,6 @@ export default function HappSettingsContent({
             ),
             children: (
               <>
-                <SettingListItem
-                  paddings="small"
-                  title={t('pages.settings.subHappAutoDetect')}
-                  description={t('pages.settings.subHappAutoDetectDesc')}
-                >
-                  <Switch
-                    checked={allSetting.subHappAutoDetect}
-                    onChange={(v) => updateSetting({ subHappAutoDetect: v })}
-                  />
-                </SettingListItem>
-
                 <SettingListItem
                   paddings="small"
                   title={t('pages.settings.subHappProviderId')}
