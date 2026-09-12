@@ -1,6 +1,7 @@
 package sub
 
 import (
+	"encoding/base64"
 	"strings"
 
 	"github.com/mhsanaei/3x-ui/v3/internal/database/model"
@@ -108,15 +109,27 @@ func (s *SubService) buildEndpointLinks(
 		applyEndpointHostPath(e, nextParams)
 		applyEndpointFinalMask(e, nextParams)
 		applyEndpointAllowInsecure(e, nextParams, securityToApply)
+		remark := makeRemark(e)
+		if e.ServerDescription != "" {
+			remark = appendHappServerDescription(remark, e.ServerDescription)
+		}
 		links = append(links, buildLinkWithParamsAndSecurity(
 			makeLink(e),
 			nextParams,
-			makeRemark(e),
+			remark,
 			securityToApply,
 			e.ForceTls == "none",
 		))
 	}
 	return strings.Join(links, "\n")
+}
+
+func appendHappServerDescription(remark, desc string) string {
+	if desc == "" {
+		return remark
+	}
+	encoded := base64.StdEncoding.EncodeToString([]byte(desc))
+	return remark + "?serverDescription=" + encoded
 }
 
 // buildEndpointVmessLinks renders one VMess base64-JSON link per endpoint.

@@ -47,55 +47,19 @@ export default function HappSettingsContent({
   };
 
   const handleBuildDeeplink = () => {
-    interface FieldRule {
-      type: string;
-      outboundTag: string;
-      domain?: string[];
-      ip?: string[];
-      network?: string;
-    }
-    const rules: FieldRule[] = [];
+    const profile = {
+      Name: 'Custom Rules',
+      GlobalProxy: 'true',
+      DirectSites: parseList(directDomains),
+      DirectIp: parseList(directIPs),
+      ProxySites: parseList(proxyDomains),
+      ProxyIp: parseList(proxyIPs),
+      BlockSites: parseList(blockDomains),
+      BlockIp: parseList(blockIPs),
+      DomainStrategy: 'IPIfNonMatch',
+    };
 
-    const bDom = parseList(blockDomains);
-    const bIp = parseList(blockIPs);
-    if (bDom.length > 0 || bIp.length > 0) {
-      rules.push({
-        type: 'field',
-        outboundTag: 'block',
-        ...(bDom.length > 0 ? { domain: bDom } : {}),
-        ...(bIp.length > 0 ? { ip: bIp } : {}),
-      });
-    }
-
-    const dDom = parseList(directDomains);
-    const dIp = parseList(directIPs);
-    if (dDom.length > 0 || dIp.length > 0) {
-      rules.push({
-        type: 'field',
-        outboundTag: 'direct',
-        ...(dDom.length > 0 ? { domain: dDom } : {}),
-        ...(dIp.length > 0 ? { ip: dIp } : {}),
-      });
-    }
-
-    const pDom = parseList(proxyDomains);
-    const pIp = parseList(proxyIPs);
-    if (pDom.length > 0 || pIp.length > 0) {
-      rules.push({
-        type: 'field',
-        outboundTag: 'proxy',
-        ...(pDom.length > 0 ? { domain: pDom } : {}),
-        ...(pIp.length > 0 ? { ip: pIp } : {}),
-      });
-    }
-
-    rules.push({
-      type: 'field',
-      outboundTag: 'proxy',
-      network: 'tcp,udp',
-    });
-
-    const deeplink = 'happ://routing/onadd/' + toBase64Utf8(JSON.stringify({ rules }));
+    const deeplink = 'happ://routing/onadd/' + toBase64Utf8(JSON.stringify(profile));
     updateSetting({ subRoutingRules: deeplink });
     setIsModalOpen(false);
     message.success(t('pages.settings.subHappDeeplinkGenerated'));
@@ -314,11 +278,13 @@ export default function HappSettingsContent({
                   description={t('pages.settings.subHappTunModeDesc')}
                 >
                   <Select
-                    value={allSetting.subHappTunMode || 'default'}
+                    value={allSetting.subHappTunMode}
                     style={{ width: '100%' }}
                     onChange={(v) => updateSetting({ subHappTunMode: v })}
                     options={[
-                      { value: 'default', label: t('pages.settings.subHappTunModeDefault') },
+                      // happ.su documents tun-mode as system|gvisor only, so
+                      // Default is the unset state rather than a third value.
+                      { value: '', label: t('pages.settings.subHappTunModeDefault') },
                       { value: 'system', label: t('pages.settings.subHappTunModeSystem') },
                       { value: 'gvisor', label: t('pages.settings.subHappTunModeGvisor') },
                     ]}
@@ -433,7 +399,7 @@ export default function HappSettingsContent({
                 >
                   <Input
                     value={allSetting.subHappColorProfile}
-                    placeholder="default, violet, turquoise, cyberpunk, or custom JSON"
+                    placeholder='{"backgroundColors":["#3D2A7DFF",...]} or resetcolors'
                     onChange={(e) => updateSetting({ subHappColorProfile: e.target.value })}
                   />
                 </SettingListItem>
