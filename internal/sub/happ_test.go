@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -60,8 +61,8 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 	if h.Get("Routing-Enable") != "0" {
 		t.Fatalf("Routing-Enable = %q, want 0 for Happ with disabled routing", h.Get("Routing-Enable"))
 	}
-	if h.Get("Routing") != "happ://routing/off" {
-		t.Fatalf("Routing = %q, want happ://routing/off for Happ with disabled routing", h.Get("Routing"))
+	if h.Get("Routing") != "happ://routing/onadd/existing-rules" {
+		t.Fatalf("Routing = %q, want happ://routing/onadd/existing-rules for Happ with configured routing", h.Get("Routing"))
 	}
 	if h.Get("Hide-Settings") != "0" {
 		t.Fatalf("Hide-Settings = %q, want 0 for Happ with disabled hideSettings", h.Get("Hide-Settings"))
@@ -123,8 +124,8 @@ func TestApplyCommonHeaders_HappRoutingOffDeeplink(t *testing.T) {
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/sub/test", nil)
 	ctx.Request.Header.Set("User-Agent", "Happ/1.2.0 (iPhone)")
 
-	// Even if profileEnableRouting is true, happ://routing/off must emit Routing-Enable: 0 and Routing: happ://routing/off
-	controller.ApplyCommonHeaders(ctx, "", "", "Title", "", "", "", true, "happ://routing/off", false)
+	// When rules is happ://routing/off, Routing-Enable is 0 and Routing is happ://routing/off
+	controller.ApplyCommonHeaders(ctx, "", "", "Title", "", "", "", false, "happ://routing/off", false)
 
 	h := recorder.Header()
 	if h.Get("Routing-Enable") != "0" {
@@ -300,4 +301,50 @@ func TestAppendQueryAndFragment_PreservesServerDescription(t *testing.T) {
 			t.Fatalf("appendQueryAndFragment = %q, want %q", link, want)
 		}
 	})
+
+	t.Run("escapes fragment when serverDescription tail contains invalid base64", func(t *testing.T) {
+		fragment := "Node 1?serverDescription=not-base64!!!"
+		link := appendQueryAndFragment("vless://user@host:443", nil, fragment, "", false)
+		want := "vless://user@host:443#Node%201%3FserverDescription%3Dnot-base64%21%21%21"
+		if link != want {
+			t.Fatalf("appendQueryAndFragment = %q, want %q", link, want)
+		}
+	})
+
+	t.Run("escapes fragment when serverDescription tail contains newline injection", func(t *testing.T) {
+		fragment := "Node 1?serverDescription=" + encoded + "\nevil://inject"
+		link := appendQueryAndFragment("vless://user@host:443", nil, fragment, "", false)
+		if strings.Contains(link, "\n") {
+			t.Fatalf("appendQueryAndFragment emitted raw newline: %q", link)
+		}
+	})
+}
+
+func TestIsHappClient(t *testing.T) {
+	matching := []string{
+		"Happ/1.2.0 (iPhone; iOS 17.5)",
+		"happ/2.0",
+		"happ",
+		"HAPP/1.0",
+		"Mozilla/5.0 Happ/1.0",
+	}
+	for _, ua := range matching {
+		if !IsHappClient(ua) {
+			t.Errorf("IsHappClient(%q) = false, want true", ua)
+		}
+	}
+
+	nonMatching := []string{
+		"Happy/2.0",
+		"happier-client",
+		"Happening/1.0",
+		"unhappy",
+		"v2rayNG/1.8.5",
+		"",
+	}
+	for _, ua := range nonMatching {
+		if IsHappClient(ua) {
+			t.Errorf("IsHappClient(%q) = true, want false", ua)
+		}
+	}
 }

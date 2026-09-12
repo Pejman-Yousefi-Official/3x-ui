@@ -939,15 +939,12 @@ func (a *SUBController) ApplyCommonHeaders(
 	// The off values undo a previously pushed setting, so they ride the same
 	// opt-in as every other Happ header rather than reaching every Happ client.
 	happManaged := a.happConfig.AutoDetect && c.Request != nil && IsHappClient(c.GetHeader("User-Agent"))
-	isOffDeeplink := strings.TrimSpace(rules) == "happ://routing/off"
-	if profileEnableRouting && !isOffDeeplink {
+	if profileEnableRouting {
 		c.Writer.Header().Set("Routing-Enable", "true")
 	} else if happManaged {
 		c.Writer.Header().Set("Routing-Enable", "0")
 	}
-	if happManaged && (!profileEnableRouting || isOffDeeplink) {
-		c.Writer.Header().Set("Routing", "happ://routing/off")
-	} else if (routingErr == nil || !remote) && strings.TrimSpace(rules) != "" {
+	if (routingErr == nil || !remote) && strings.TrimSpace(rules) != "" {
 		c.Writer.Header().Set("Routing", rules)
 	}
 	if profileHideSettings {

@@ -121,7 +121,7 @@ export default function HappSettingsContent({
                       ]}
                     />
                     <Button type="primary" onClick={applyPreset}>
-                      {t('apply')}
+                      {t('pages.settings.subHappPresets')}
                     </Button>
                   </Space>
                 </SettingListItem>
@@ -408,7 +408,7 @@ export default function HappSettingsContent({
                   title={t('pages.settings.subHappColorProfile')}
                   description={t('pages.settings.subHappColorProfileDesc')}
                 >
-                  <Space direction="vertical" style={{ width: '100%' }}>
+                  <Space orientation="vertical" style={{ width: '100%' }}>
                     <Input
                       value={allSetting.subHappColorProfile}
                       placeholder='{"serverRowBackgroundColor":"#21003D67"} or resetcolors'
@@ -559,7 +559,7 @@ export default function HappSettingsContent({
         okText={t('pages.settings.subHappBuildDeeplink')}
         width={650}
       >
-        <Space direction="vertical" style={{ width: '100%', marginTop: 12 }} size="middle">
+        <Space orientation="vertical" style={{ width: '100%', marginTop: 12 }} size="middle">
           <div>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>
               {t('pages.settings.subHappDirectDomains')}

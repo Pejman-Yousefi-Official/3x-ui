@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var happUserAgentRegex = regexp.MustCompile(`(?i)\bhapp`)
+var happUserAgentRegex = regexp.MustCompile(`(?i)\bhapp\b`)
 
 // HappConfig holds all Happ client customization parameters.
 type HappConfig struct {
