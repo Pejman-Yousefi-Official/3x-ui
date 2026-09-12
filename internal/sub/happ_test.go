@@ -1,6 +1,7 @@
 package sub
 
 import (
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -53,11 +54,14 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/sub/test", nil)
 	ctx.Request.Header.Set("User-Agent", "Happ/1.2.0 (iPhone; iOS 17.5)")
 
-	controller.ApplyCommonHeaders(ctx, "upload=0; download=100; total=1000; expire=1800000000", "12", "MyTitle", "", "", "", false, "", false)
+	controller.ApplyCommonHeaders(ctx, "upload=0; download=100; total=1000; expire=1800000000", "12", "MyTitle", "", "", "", false, "happ://routing/onadd/existing-rules", false)
 
 	h := recorder.Header()
 	if h.Get("Routing-Enable") != "0" {
 		t.Fatalf("Routing-Enable = %q, want 0 for Happ with disabled routing", h.Get("Routing-Enable"))
+	}
+	if h.Get("Routing") != "happ://routing/off" {
+		t.Fatalf("Routing = %q, want happ://routing/off for Happ with disabled routing", h.Get("Routing"))
 	}
 	if h.Get("Hide-Settings") != "0" {
 		t.Fatalf("Hide-Settings = %q, want 0 for Happ with disabled hideSettings", h.Get("Hide-Settings"))
@@ -106,6 +110,28 @@ func TestApplyCommonHeaders_HappClientHeaders(t *testing.T) {
 	}
 	if h.Get("Per-App-Proxy-Mode") != "on" || h.Get("Per-App-Proxy-List") != "com.google.chrome,com.meta.instagram" {
 		t.Fatalf("Per-App = %s / %s, want on / com.google.chrome,com.meta.instagram", h.Get("Per-App-Proxy-Mode"), h.Get("Per-App-Proxy-List"))
+	}
+}
+
+func TestApplyCommonHeaders_HappRoutingOffDeeplink(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := HappConfig{AutoDetect: true}
+	controller := &SUBController{happConfig: cfg}
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/sub/test", nil)
+	ctx.Request.Header.Set("User-Agent", "Happ/1.2.0 (iPhone)")
+
+	// Even if profileEnableRouting is true, happ://routing/off must emit Routing-Enable: 0 and Routing: happ://routing/off
+	controller.ApplyCommonHeaders(ctx, "", "", "Title", "", "", "", true, "happ://routing/off", false)
+
+	h := recorder.Header()
+	if h.Get("Routing-Enable") != "0" {
+		t.Fatalf("Routing-Enable = %q, want 0 when rules is happ://routing/off", h.Get("Routing-Enable"))
+	}
+	if h.Get("Routing") != "happ://routing/off" {
+		t.Fatalf("Routing = %q, want happ://routing/off", h.Get("Routing"))
 	}
 }
 
@@ -164,6 +190,9 @@ func TestApplyHappHeaders_Gating(t *testing.T) {
 		}
 		if got := recorder.Header().Get("Hide-Settings"); got != "" {
 			t.Fatalf("Hide-Settings emitted when AutoDetect is false: %q", got)
+		}
+		if got := recorder.Header().Get("Routing"); got != "" {
+			t.Fatalf("Routing emitted when AutoDetect is false: %q", got)
 		}
 	})
 }
@@ -224,4 +253,51 @@ func TestApplyHappHeaders_Aliases(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAppendHappServerDescription(t *testing.T) {
+	desc := "VIP Server"
+	encoded := base64.StdEncoding.EncodeToString([]byte(desc))
+
+	got := appendHappServerDescription("My Node", desc)
+	want := "My Node?serverDescription=" + encoded
+	if got != want {
+		t.Fatalf("appendHappServerDescription = %q, want %q", got, want)
+	}
+
+	if gotEmpty := appendHappServerDescription("My Node", ""); gotEmpty != "My Node" {
+		t.Fatalf("appendHappServerDescription with empty desc = %q, want My Node", gotEmpty)
+	}
+}
+
+func TestAppendQueryAndFragment_PreservesServerDescription(t *testing.T) {
+	desc := "Fast Server"
+	encoded := base64.StdEncoding.EncodeToString([]byte(desc))
+
+	t.Run("preserves serverDescription with encoded title", func(t *testing.T) {
+		fragment := "Server 01?serverDescription=" + encoded
+		link := appendQueryAndFragment("vless://user@host:443", nil, fragment, "", false)
+		want := "vless://user@host:443#Server%2001?serverDescription=" + encoded
+		if link != want {
+			t.Fatalf("appendQueryAndFragment = %q, want %q", link, want)
+		}
+	})
+
+	t.Run("properly escapes remark containing literal question mark without serverDescription", func(t *testing.T) {
+		fragment := "Fast? Server"
+		link := appendQueryAndFragment("vless://user@host:443", nil, fragment, "", false)
+		want := "vless://user@host:443#Fast%3F%20Server"
+		if link != want {
+			t.Fatalf("appendQueryAndFragment = %q, want %q", link, want)
+		}
+	})
+
+	t.Run("properly escapes remark containing literal question mark with serverDescription", func(t *testing.T) {
+		fragment := "Fast? Server?serverDescription=" + encoded
+		link := appendQueryAndFragment("vless://user@host:443", nil, fragment, "", false)
+		want := "vless://user@host:443#Fast%3F%20Server?serverDescription=" + encoded
+		if link != want {
+			t.Fatalf("appendQueryAndFragment = %q, want %q", link, want)
+		}
+	})
 }
